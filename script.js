@@ -1,19 +1,12 @@
 const SUPABASE_URL = "https://sbstwtxwwxbrgvkpwglb.supabase.co/rest/v1/";
 const SUPABASE_KEY = "sb_publishable_hr0J-VQK6ECCGz6fTXxLPg_9xdFTWmf";
 
-const supabase = window.supabase ? window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY) : null;
+const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-let supabase = null;
+let activeUser = null;
 
+// Проверяем, заходил ли пользователь раньше
 window.onload = async function() {
-    if (window.supabase) {
-        supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-    } else {
-        console.error("Supabase не загрузился из интернета!");
-        alert("Ошибка: Не удалось подключиться к серверу базы данных. Проверьте интернет.");
-        return;
-    }
-
     const savedEmail = localStorage.getItem('chm_user_email');
     if (savedEmail) {
         const { data } = await supabase.from('profiles').select('*').eq('email', savedEmail).single();
@@ -25,8 +18,9 @@ window.onload = async function() {
     }
 };
 
-// Функция предпросмотра темы при выборе
+// Функция предпросмотра темы при выборе в выпадающем списке
 function changePreviewTheme(val) { applyTheme(val); }
+
 // Функция смены расцветки приложения под выбранную сборную
 function applyTheme(team) {
     document.body.className = '';
@@ -41,15 +35,13 @@ async function authRegister() {
 
     if (!username || !email) return alert("Заполните имя и email!");
 
-    // Проверяем, админская ли это почта
     const is_admin = email.toLowerCase() === 'admin@chm.ru'; 
 
-    // Ищем пользователя в базе
     const { data: existing } = await supabase.from('profiles').select('*').eq('email', email).single();
+    
     if (existing) {
         activeUser = existing;
     } else {
-        // Если пользователя нет, регистрируем нового
         const { data, error } = await supabase.from('profiles').insert([{ username, email, favorite_team, is_admin }]).select().single();
         if (error) return alert("Ошибка регистрации: " + error.message);
         activeUser = data;
@@ -65,7 +57,7 @@ function showMainPage() {
     document.getElementById('authBlock').style.display = 'none';
     document.getElementById('mainBlock').style.display = 'block';
     document.getElementById('userDisplay').innerText = activeUser.username;
-    // Если зашел админ, открываем панель управления
+    
     if (activeUser.is_admin) {
         document.getElementById('adminPanel').style.display = 'block';
         document.getElementById('userBadge').innerText = '(Администратор)';
@@ -88,7 +80,7 @@ async function loadData() {
 }
 
 // --- ФУНКЦИИ АДМИНИСТРАТОРА ---
-// Создание матча и автоматическая привязка выбранных вопросов
+
 async function adminCreateMatch() {
     const group_name = document.getElementById('admGroup').value.trim();
     const team_home = document.getElementById('admHome').value.trim();
@@ -100,7 +92,6 @@ async function adminCreateMatch() {
     
     if (error) return alert(error.message);
 
-    // Добавляем доп. вопросы для предикта, если стоят галочки
     if (document.getElementById('addFirstGoalQ').checked) {
         await supabase.from('match_questions').insert([{ match_id: match.id, question_text: "Кто откроет счет в матче?", type: 'first_goal' }]);
     }
@@ -113,8 +104,6 @@ async function adminCreateMatch() {
     document.getElementById('admAway').value = "";
     loadData();
 }
-
-// Отображение live-управления матчами в админке
 async function updateAdminLiveView() {
     const { data: matches } = await supabase.from('matches').select('*').order('status');
     const container = document.getElementById('adminLiveMatchesView');
@@ -135,13 +124,11 @@ async function updateAdminLiveView() {
                         <option value="home" ${m.first_goal_team === 'home'?'selected':''}>${m.team_home}</option>
                         <option value="away" ${m.first_goal_team === 'away'?'selected':''}>${m.team_away}</option>
                     </select>
-
                     Пенальти:
                     <select id="adm-pen-${m.id}" style="width:auto; display:inline; padding:5px; margin:0 5px;">
                         <option value="no" ${m.has_penalty === 'no'?'selected':''}>Нет</option>
                         <option value="yes" ${m.has_penalty === 'yes'?'selected':''}>Да</option>
                     </select>
-
                     <br><br>
                     <button onclick="changeMatchStatus('${m.id}', 'live')" style="background:var(--accent-red); width:auto; padding:6px 12px; font-size:12px; color:#fff;">1. Начать матч (LIVE)</button>
                     <button onclick="updateLiveScore('${m.id}')" style="background:var(--gold); width:auto; padding:6px 12px; font-size:12px;">2. Обновить счет / события</button>
@@ -151,15 +138,13 @@ async function updateAdminLiveView() {
         });
     }
 }
-// Изменение статуса матча (Ожидание -> LIVE -> Завершен)
+
 async function changeMatchStatus(id, newStatus) {
     await supabase.from('matches').update({ status: newStatus }).eq('id', id);
-    // Если матч завершается, делаем финальный пересчет баллов
     if (newStatus === 'finished') await calculateMatchPoints(id);
     loadData();
 }
 
-// Обновление live-счета матча и мгновенный временный пересчет баллов в реальном времени
 async function updateLiveScore(id) {
     const score_home = parseInt(document.getElementById(`adm-sc-h-${id}`).value) || 0;
     const score_away = parseInt(document.getElementById(`adm-sc-a-${id}`).value) || 0;
@@ -167,14 +152,12 @@ async function updateLiveScore(id) {
     const has_penalty = document.getElementById(`adm-pen-${id}`).value;
 
     await supabase.from('matches').update({ score_home, score_away, first_goal_team, has_penalty }).eq('id', id);
-    
-    // Пересчитываем баллы прямо по ходу матча
     await calculateMatchPoints(id);
     loadData();
 }
-// --- ИГРОВЫЕ ФУНКЦИИ (ДЛЯ ДРУЗЕЙ И ВАС) ---
 
-// Показ карточек всех матчей турнира и форм для прогнозов
+// --- ИГРОВЫЕ ФУНКЦИИ ---
+
 async function updateMatchesList() {
     const { data: matches } = await supabase.from('matches').select('*').order('group_name');
     const { data: questions } = await supabase.from('match_questions').select('*');
@@ -190,7 +173,6 @@ async function updateMatchesList() {
             
             let statusBadge = m.status === 'live' ? '<span class="live-badge">LIVE</span>' : (m.status === 'finished' ? '<span>Завершен</span>' : '<span>Ожидание</span>');
             let predictBtnText = userPred ? "✏️ Изменить прогноз" : "🔮 Сделать прогноз (Predict)";
-            // Если матч начался или завершился, кнопки прогнозов блокируются
             let disabledAttr = m.status !== 'pending' ? 'disabled style="opacity:0.4; cursor:not-allowed;"' : '';
 
             let questionsInputsHtml = '';
@@ -240,24 +222,22 @@ async function updateMatchesList() {
         });
     }
 }
-// Показ/скрытие блока предикта при нажатии на кнопку
+
 function togglePredictSection(id) {
     const sec = document.getElementById(`pred-sec-${id}`);
     sec.style.display = sec.style.display === 'block' ? 'none' : 'block';
 }
 
-// Сохранение прогноза игрока в базу данных
 async function savePrediction(matchId) {
     const pred_home = parseInt(document.getElementById(`pred-h-${matchId}`).value) || 0;
     const pred_away = parseInt(document.getElementById(`pred-a-${matchId}`).value) || 0;
-    
     const fqElem = document.getElementById(`pred-fq-${matchId}`);
     const penElem = document.getElementById(`pred-pen-${matchId}`);
-    
     const pred_first_goal = fqElem ? fqElem.value : null;
     const pred_has_penalty = penElem ? penElem.value : null;
 
     const { data: existing } = await supabase.from('predictions').select('*').eq('user_email', activeUser.email).eq('match_id', matchId).single();
+
     if (existing) {
         await supabase.from('predictions').update({ pred_home, pred_away, pred_first_goal, pred_has_penalty }).eq('id', existing.id);
     } else {
@@ -268,7 +248,6 @@ async function savePrediction(matchId) {
     loadData();
 }
 
-// 🧮 СУПЕР-ФОРМУЛА ПОДЧЕТА БАЛЛОВ ПО ВАШИМ ПРАВИЛАМ
 async function calculateMatchPoints(matchId) {
     const { data: match } = await supabase.from('matches').select('*').eq('id', matchId).single();
     const { data: predictions } = await supabase.from('predictions').select('*').eq('match_id', matchId);
@@ -277,62 +256,40 @@ async function calculateMatchPoints(matchId) {
 
     for (let p of predictions) {
         let points = 0;
-
         const realH = match.score_home;
         const realA = match.score_away;
         const predH = p.pred_home;
         const predA = p.pred_away;
 
-        // 1. Точный счет (+3 балла)
-        if (realH === predH && realA === predA) {
-            points += 3;
-        } 
-        // 2. Разница мячей (+2 балла)
-        else if ((realH - realA) === (predH - predA)) {
-            points += 2;
-        } 
-        // 3. Исходы: победа или ничья (+1 балл)
-        else if ((realH > realA && predH > predA) || (realH < realA && predH < predA) || (realH === realA && predH === predA)) {
-            points += 1;
-        }
+        if (realH === predH && realA === predA) { points += 3; } 
+        else if ((realH - realA) === (predH - predA)) { points += 2; } 
+        else if ((realH > realA && predH > predA) || (realH < realA && predH < predA) || (realH === realA && predH === predA)) { points += 1; }
 
-        // 4. Доп. Вопрос: Кто первый открыл счет (+1 балл)
-        if (p.pred_first_goal && p.pred_first_goal === match.first_goal_team) {
-            points += 1;
-        }
-        // 5. Доп. Вопрос: Был ли пенальти (+1 балл)
-        if (p.pred_has_penalty && p.pred_has_penalty === match.has_penalty) {
-            points += 1;
-        }
+        if (p.pred_first_goal && p.pred_first_goal === match.first_goal_team) { points += 1; }
+        if (p.pred_has_penalty && p.pred_has_penalty === match.has_penalty) { points += 1; }
 
-        // Записываем итоговую сумму баллов за матч
         await supabase.from('predictions').update({ points_earned: points }).eq('id', p.id);
     }
 }
 
-// Сборка и сортировка общей таблицы лидеров турнира
 async function updateLeaderboard() {
     const { data: users } = await supabase.from('profiles').select('*');
     const { data: allPreds } = await supabase.from('predictions').select('*');
 
     const leaderboard = {};
-    if (users) {
-        users.forEach(u => leaderboard[u.username] = { points: 0, team: u.favorite_team });
-    }
+    if (users) { users.forEach(u => leaderboard[u.username] = { points: 0, team: u.favorite_team }); }
 
     if (allPreds && users) {
         allPreds.forEach(p => {
             const userObj = users.find(u => u.email === p.user_email);
-            if (userObj) {
-                leaderboard[userObj.username].points += p.points_earned;
-            }
+            if (userObj) { leaderboard[userObj.username].points += p.points_earned; }
         });
     }
 
     const container = document.getElementById('leaderboardView');
     container.innerHTML = '';
 
-    const sorted = Object.entries(leaderboard).sort((a,b) => b[1].points - a[1].points);
+    const sorted = Object.entries(leaderboard).sort((a,b) => b.points - a.points);
     sorted.forEach(([name, data], idx) => {
         let flag = data.team === 'argentina' ? 'Аргентина 🇦🇷' : (data.team === 'france' ? 'Франция 🇫🇷' : (data.team === 'spain' ? 'Испания 🇪🇸' : 'ЧМ 🌐'));
         container.innerHTML += `
