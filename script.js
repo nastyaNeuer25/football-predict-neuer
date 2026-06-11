@@ -30,7 +30,7 @@ function applyTheme(team) {
     document.body.classList.add('theme-' + team);
 }
 
-// ФУНКЦИЯ РЕГИСТРАЦИИ И ВХОДA
+// ФУНКЦИЯ РЕГИСТРАЦИИ И ВХОДА (ТЕПЕРЬ ОПУЩЕНА НИЖЕ ИНИЦИАЛИЗАЦИИ БАЗЫ)
 async function authRegister() {
     const username = document.getElementById('regName').value.trim();
     const email = document.getElementById('regEmail').value.trim();
