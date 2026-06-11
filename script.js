@@ -1,8 +1,16 @@
 const SUPABASE_URL = "https://sbstwtxwwxbrgvkpwglb.supabase.co/rest/v1/";
 const SUPABASE_KEY = "sb_publishable_hr0J-VQK6ECCGz6fTXxLPg_9xdFTWmf";
 
-const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+// Безопасное создание подключения
+const supabase = (window.supabase && window.supabase.createClient) 
+    ? window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY) 
+    : (window.Supabase && window.Supabase.createClient)
+        ? window.Supabase.createClient(SUPABASE_URL, SUPABASE_KEY)
+        : null;
 
+if (!supabase) {
+    console.error("Критическая ошибка: Библиотека Supabase не найдена на странице!");
+}
 let activeUser = null;
 
 // Проверяем, заходил ли пользователь раньше
