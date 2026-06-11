@@ -1,11 +1,19 @@
 const SUPABASE_URL = "https://sbstwtxwwxbrgvkpwglb.supabase.co/rest/v1/";
 const SUPABASE_KEY = "sb_publishable_hr0J-VQK6ECCGz6fTXxLPg_9xdFTWmf";
-const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-let activeUser = null;
+const supabase = window.supabase ? window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY) : null;
 
-// Проверяем, заходил ли пользователь раньше
+let supabase = null;
+
 window.onload = async function() {
+    if (window.supabase) {
+        supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+    } else {
+        console.error("Supabase не загрузился из интернета!");
+        alert("Ошибка: Не удалось подключиться к серверу базы данных. Проверьте интернет.");
+        return;
+    }
+
     const savedEmail = localStorage.getItem('chm_user_email');
     if (savedEmail) {
         const { data } = await supabase.from('profiles').select('*').eq('email', savedEmail).single();
