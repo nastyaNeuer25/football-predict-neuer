@@ -5,17 +5,14 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>🏆 FIFA World Cup 2026 Predictor</title>
     <style>
-        /* Базовые цвета ЧМ 2026 */
         :root {
             --bg-color: #0b132b;
             --card-bg: #1c2541;
             --text-color: #ffffff;
-            --accent-color: #00ff88; /* Зеленый Мексика */
-            --accent-red: #ff3366;   /* Красный Канада */
-            --gold: #ffbe0b;         /* Золото США */
+            --accent-color: #00ff88;
+            --accent-red: #ff3366;
+            --gold: #ffbe0b;
         }
-        
-        /* Стили под разные сборные */
         body.theme-argentina { --bg-color: #74b9ff; --card-bg: #ffffff; --text-color: #2d3436; --accent-color: #0984e3; }
         body.theme-france { --bg-color: #090a5e; --card-bg: #1a1c8c; --text-color: #ffffff; --accent-color: #ff3333; }
         body.theme-spain { --bg-color: #aa0000; --card-bg: #cc0000; --text-color: #ffffff; --accent-color: #ffcc00; }
@@ -27,28 +24,22 @@
         header h1 { margin: 0; font-size: 28px; text-transform: uppercase; letter-spacing: 2px; }
         .card { background: var(--card-bg); padding: 20px; border-radius: 16px; margin-bottom: 20px; box-shadow: 0 8px 20px rgba(0,0,0,0.4); }
         h2 { margin-top: 0; color: var(--gold); border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 8px; }
-        
-        /* Формы и кнопки */
         input, select, button { width: 100%; padding: 12px; margin: 8px 0; border-radius: 8px; border: 1px solid rgba(255,255,255,0.2); background: rgba(0,0,0,0.2); color: inherit; font-size: 16px; box-sizing: border-box; }
         button { background: var(--accent-color); color: #000; font-weight: bold; cursor: pointer; border: none; text-transform: uppercase; transition: 0.2s; }
         button:hover { filter: brightness(1.2); }
-        
-        /* Сетка матчей */
         .match-grid { display: grid; grid-template-columns: 1fr; gap: 15px; }
         .match-item { background: rgba(255,255,255,0.05); padding: 15px; border-radius: 12px; border-left: 5px solid var(--gold); }
         .match-header { display: flex; justify-content: space-between; font-weight: bold; color: var(--gold); font-size: 14px; margin-bottom: 10px; }
         .teams-display { display: flex; justify-content: center; align-items: center; font-size: 20px; font-weight: bold; gap: 15px; margin: 10px 0; }
         .live-badge { background: var(--accent-red); color: white; padding: 3px 8px; border-radius: 4px; font-size: 12px; animation: blink 1.5s infinite; }
-        
-        /* Секция прогнозов */
         .predict-section { background: rgba(0,0,0,0.3); padding: 15px; margin-top: 10px; border-radius: 8px; display: none; }
         .score-inputs { display: flex; justify-content: center; gap: 10px; align-items: center; }
         .score-inputs input { width: 60px; text-align: center; font-size: 20px; }
-        
         .admin-panel { border: 2px dashed var(--accent-red); background: #220000; display: none; }
-        
         @keyframes blink { 0% { opacity: 0.3; } 50% { opacity: 1; } 100% { opacity: 0.3; } }
     </style>
+    
+    <!-- Подключаем сам Supabase из интернета -->
     <script src="https://jsdelivr.net"></script>
 </head>
 <body class="theme-chm2026">
@@ -59,12 +50,12 @@
         <p>Канада • Мексика • США</p>
     </header>
 
-    <!-- 1. ОКНО РЕГИСТРАЦИИ И ВХОДА -->
+    <!-- 1. ОКНО РЕГИСТРАЦИИ -->
     <div id="authBlock" class="card">
         <h2>📝 Регистрация участника ЧМ</h2>
         <input type="text" id="regName" placeholder="Ваше Имя / Никнейм">
         <input type="email" id="regEmail" placeholder="Ваш Email (для входа)">
-        <label>Выверите сборную (сменит цвет приложения):</label>
+        <label>Выберите сборную:</label>
         <select id="regTeam" onchange="changePreviewTheme(this.value)">
             <option value="chm2026">🌐 Стиль ЧМ 2026</option>
             <option value="argentina">🇦🇷 Аргентина</option>
@@ -73,48 +64,83 @@
         </select>
         <button onclick="authRegister()">Создать аккаунт и войти</button>
     </div>
-
     <!-- 2. ГЛАВНЫЙ ЭКРАН ИГРЫ -->
     <div id="mainBlock" style="display:none;">
-        
-        <!-- Профиль -->
         <div class="card" style="display:flex; justify-content: space-between; align-items: center;">
             <div>Привет, <b id="userDisplay">Игрок</b>! <span id="userBadge" style="color:var(--gold)"></span></div>
             <button onclick="logout()" style="width:auto; padding:5px 10px; font-size:12px; background:var(--accent-red); color:#fff;">Выйти</button>
         </div>
 
-        <!-- ТАБЛИЦА ЛИДЕРОВ -->
         <div class="card">
             <h2>📊 Общий зачет турнира</h2>
             <div id="leaderboardView">Загрузка очков...</div>
         </div>
 
-        <!-- МАТЧИ И ГРУППЫ -->
         <div class="card">
             <h2>⚽️ Расписание матчей и предикты</h2>
             <div id="matchesListView" class="match-grid"></div>
         </div>
 
-        <!-- СЕКРЕТНАЯ АДМИНКА -->
+        <!-- АДМИНКА -->
         <div class="card admin-panel" id="adminPanel">
-            <h2>⚙️ Панель Администратора (Управление ЧМ)</h2>
-            
+            <h2>⚙️ Панель Администратора</h2>
             <h3>Шаг 1: Создать новый матч</h3>
             <input type="text" id="admGroup" placeholder="Например: Группа А">
-            <input type="text" id="admHome" placeholder="Команда 1 (Например: Мексика)">
-            <input type="text" id="admAway" placeholder="Команда 2 (Например: США)">
-            
-            <label><input type="checkbox" id="addFirstGoalQ" checked> Добавить вопрос: "Кто откроет счет?" (+1 балл)</label><br>
-            <label><input type="checkbox" id="addPenaltyQ" checked> Добавить вопрос: "Будет ли пенальти?" (+1 балл)</label>
+            <input type="text" id="admHome" placeholder="Команда 1">
+            <input type="text" id="admAway" placeholder="Команда 2">
+            <label><input type="checkbox" id="addFirstGoalQ" checked> Вопрос: "Кто откроет счет?"</label><br>
+            <label><input type="checkbox" id="addPenaltyQ" checked> Вопрос: "Будет ли пенальти?"</label>
             <button onclick="adminCreateMatch()" style="background:var(--gold);">Внести матч в календарь</button>
 
-            <h3>Шаг 2: LIVE-управление счетом и закрытие игр</h3>
+            <h3>Шаг 2: LIVE-управление</h3>
             <div id="adminLiveMatchesView"></div>
         </div>
-
     </div>
 </div>
 
-<script src="app.js"></script>
-</body>
-</html>
+<!-- НАЧАЛО JAVASCRIPT-ЛОГИКИ -->
+<script>
+const SUPABASE_URL = "https://sbstwtxwwxbrgvkpwglb.supabase.co/rest/v1/"; // <-- СЮДА ССЫЛКУ!
+const SUPABASE_KEY = "sb_publishable_hr0J-VQK6ECCGz6fTXxLPg_9xdFTWmf";  // <-- СЮДА КЛЮЧ!
+const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+let activeUser = null;
+
+window.onload = async function() {
+    const savedEmail = localStorage.getItem('chm_user_email');
+    if (savedEmail) {
+        const { data } = await supabase.from('profiles').select('*').eq('email', savedEmail).single();
+        if (data) {
+            activeUser = data;
+            applyTheme(activeUser.favorite_team);
+            showMainPage();
+        }
+    }
+};
+
+function changePreviewTheme(val) { applyTheme(val); }
+function applyTheme(team) {
+    document.body.className = '';
+    document.body.classList.add('theme-' + team);
+}
+
+async function authRegister() {
+    const username = document.getElementById('regName').value.trim();
+    const email = document.getElementById('regEmail').value.trim();
+    const favorite_team = document.getElementById('regTeam').value;
+
+    if (!username || !email) return alert("Заполните имя и email!");
+    const is_admin = email.toLowerCase() === 'admin@chm.ru'; 
+
+    const { data: existing } = await supabase.from('profiles').select('*').eq('email', email).single();
+    if (existing) {
+        activeUser = existing;
+    } else {
+        const { data, error } = await supabase.from('profiles').insert([{ username, email, favorite_team, is_admin }]).select().single();
+        if (error) return alert("Ошибка: " + error.message);
+        activeUser = data;
+    }
+    localStorage.setItem('chm_user_email', activeUser.email);
+    applyTheme(activeUser.favorite_team);
+    showMainPage();
+}
