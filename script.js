@@ -1,12 +1,7 @@
 const SUPABASE_URL = "https://sbstwtxwwxbrgvkpwglb.supabase.co/rest/v1/";
 const SUPABASE_KEY = "sb_publishable_hr0J-VQK6ECCGz6fTXxLPg_9xdFTWmf";
 
-// Безопасное создание подключения
-const supabase = (window.supabase && window.supabase.createClient) 
-    ? window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY) 
-    : (window.Supabase && window.Supabase.createClient)
-        ? window.Supabase.createClient(SUPABASE_URL, SUPABASE_KEY)
-        : null;
+const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
 let activeUser = null;
 
@@ -93,7 +88,8 @@ async function adminCreateMatch() {
     alert("Матч создан!"); 
     loadData();
 }
-// АДМИНКА: LIVE УПРАВЛЕНИЕ СЧЕТОМ
+
+// АДМИНКА: LIVE УПРАВЛЕНИЕ
 async function updateAdminLiveView() {
     const { data: matches } = await supabase.from('matches').select('*').order('status');
     const container = document.getElementById('adminLiveMatchesView');
@@ -156,6 +152,7 @@ async function updateMatchesList() {
         });
     }
 }
+
 function togglePredictSection(id) {
     const sec = document.getElementById(`pred-sec-${id}`);
     sec.style.display = sec.style.display === 'block' ? 'none' : 'block';
@@ -175,7 +172,7 @@ async function savePrediction(matchId) {
     loadData();
 }
 
-// 🧮 ФОРМУЛА СЧЕТА БАЛЛОВ (+3, +2, +1)
+// ФОРМУЛА СЧЕТА БАЛЛОВ (+3, +2, +1)
 async function calculateMatchPoints(matchId) {
     const { data: match } = await supabase.from('matches').select('*').eq('id', matchId).single();
     const { data: predictions } = await supabase.from('predictions').select('*').eq('match_id', matchId);
@@ -207,3 +204,6 @@ async function updateLeaderboard() {
         container.innerHTML += `<div style="padding:10px; margin:5px 0; background:rgba(255,255,255,0.05); border-radius:8px;">${idx+1}. ${name} — <b>${data.points} очков</b></div>`;
     });
 }
+
+</script>
+<!-- КОНЕЦ JAVASCRIPT-ЛОГИКИ -->
